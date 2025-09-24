@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Button } from "@/components/ui/button";
@@ -14,95 +14,110 @@ import {
   Clock,
   Eye
 } from "lucide-react";
+import { productApi, categoryApi } from '../lib/api';
+
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  imageUrls: string[];
+  category: Category;
+  materialType: string;
+  inStock: boolean;
+  printTimeHours: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  imageUrl: string;
+  products?: Product[];
+}
 
 const CatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = [
-    { id: "all", name: "All Products", count: 24 },
-    { id: "architectural", name: "Architectural Models", count: 12 },
-    { id: "miniatures", name: "Miniatures", count: 6 },
-    { id: "keychains", name: "Keychains", count: 8 },
-    { id: "gifts", name: "Custom Gifts", count: 10 },
-    { id: "prototypes", name: "Prototypes", count: 4 }
-  ];
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          productApi.getAllProducts(),
+          categoryApi.getAllCategories(),
+        ]);
+        setProducts(productsRes.data);
+        setCategories([
+          { id: 0, name: "All Products", description: "All products", imageUrl: "" },
+          ...categoriesRes.data
+        ]);
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const products = [
-    {
-      id: 1,
-      name: "Modern Office Building Model",
-      category: "architectural",
-      price: "$120",
-      image: "/api/placeholder/300/200",
-      description: "Detailed scale model perfect for presentations",
-      rating: 4.9,
-      deliveryTime: "3-5 days",
-      popular: true
-    },
-    {
-      id: 2,
-      name: "Custom Logo Keychain",
-      category: "keychains", 
-      price: "$8",
-      image: "/api/placeholder/300/200",
-      description: "Personalized keychain with your logo or text",
-      rating: 4.8,
-      deliveryTime: "1-2 days",
-      popular: false
-    },
-    {
-      id: 3,
-      name: "Residential House Model",
-      category: "architectural",
-      price: "$85",
-      image: "/api/placeholder/300/200",
-      description: "Perfect for real estate presentations",
-      rating: 4.7,
-      deliveryTime: "2-4 days",
-      popular: true
-    },
-    {
-      id: 4,
-      name: "Character Figurine",
-      category: "miniatures",
-      price: "$25",
-      image: "/api/placeholder/300/200",
-      description: "Custom character miniature from your design",
-      rating: 4.9,
-      deliveryTime: "3-5 days",
-      popular: false
-    },
-    {
-      id: 5,
-      name: "Corporate Gift Set",
-      category: "gifts",
-      price: "$45",
-      image: "/api/placeholder/300/200", 
-      description: "Branded items perfect for corporate events",
-      rating: 4.6,
-      deliveryTime: "5-7 days",
-      popular: true
-    },
-    {
-      id: 6,
-      name: "Product Prototype",
-      category: "prototypes",
-      price: "$150",
-      image: "/api/placeholder/300/200",
-      description: "Functional prototype for product development",
-      rating: 4.8,
-      deliveryTime: "7-10 days",
-      popular: false
+    fetchInitialData();
+  }, []);
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      const response = await productApi.getAllProducts();
+      setProducts(response.data);
+      return;
     }
-  ];
+    try {
+      setLoading(true);
+      const response = await productApi.searchProducts(searchTerm);
+      setProducts(response.data.content);
+    } catch (error) {
+      console.error('Error searching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleCategoryChange = async (categoryId: string) => {
+    try {
+      setLoading(true);
+      setSelectedCategory(categoryId);
+      if (categoryId === "all") {
+        const response = await productApi.getAllProducts();
+        setProducts(response.data);
+      } else {
+        const response = await productApi.getProductsByCategory(Number(categoryId));
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error('Error filtering by category:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter products based on search term
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSearch = searchTerm
+      ? product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    return matchesSearch;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,17 +165,19 @@ const CatalogPage = () => {
                 {categories.map((category) => (
                   <button
                     key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
+                    onClick={() => handleCategoryChange(category.id === 0 ? "all" : category.id.toString())}
                     className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-smooth hover:bg-accent/50 ${
-                      selectedCategory === category.id 
+                      selectedCategory === (category.id === 0 ? "all" : category.id.toString())
                         ? "bg-primary/10 text-primary border border-primary/20" 
                         : "text-muted-foreground"
                     }`}
                   >
                     <span className="text-sm font-medium">{category.name}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {category.count}
-                    </Badge>
+                    {category.products && (
+                      <Badge variant="secondary" className="text-xs">
+                        {category.products.length}
+                      </Badge>
+                    )}
                   </button>
                 ))}
               </div>
@@ -173,7 +190,7 @@ const CatalogPage = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold">
-                  {selectedCategory === "all" ? "All Products" : categories.find(c => c.id === selectedCategory)?.name}
+                  {selectedCategory === "all" ? "All Products" : categories.find(c => c.id.toString() === selectedCategory)?.name}
                 </h2>
                 <p className="text-muted-foreground">
                   Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
@@ -191,13 +208,13 @@ const CatalogPage = () => {
                 <Card key={product.id} className="group hover:shadow-card-hover transition-smooth overflow-hidden">
                   <div className="aspect-video bg-muted relative overflow-hidden">
                     <img 
-                      src={product.image} 
+                      src={product.imageUrls?.[0] || '/placeholder.svg'} 
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    {product.popular && (
-                      <Badge className="absolute top-3 left-3 bg-warm-orange text-white">
-                        Popular
+                    {product.inStock && (
+                      <Badge className="absolute top-3 left-3 bg-green-500 text-white">
+                        In Stock
                       </Badge>
                     )}
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -211,7 +228,7 @@ const CatalogPage = () => {
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                       <div className="text-right flex-shrink-0 ml-2">
-                        <div className="text-lg font-bold text-primary">{product.price}</div>
+                        <div className="text-lg font-bold text-primary">${product.price.toFixed(2)}</div>
                       </div>
                     </div>
                     <CardDescription className="text-sm">
@@ -221,19 +238,19 @@ const CatalogPage = () => {
 
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">{product.rating}</span>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Star className="w-4 h-4" />
+                        <span className="text-sm font-medium">{product.materialType}</span>
                       </div>
                       
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="w-4 h-4" />
-                        <span className="text-sm">{product.deliveryTime}</span>
+                        <span className="text-sm">~{product.printTimeHours}h print time</span>
                       </div>
                     </div>
 
                     <Button className="w-full">
-                      Request Quote
+                      View Details
                     </Button>
                   </CardContent>
                 </Card>
