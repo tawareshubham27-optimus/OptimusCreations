@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://tawareshubham27-optimus.github.io/OptimusCreations/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

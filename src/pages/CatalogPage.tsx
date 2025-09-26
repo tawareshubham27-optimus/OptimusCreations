@@ -15,33 +15,15 @@ import {
   Eye
 } from "lucide-react";
 import { productApi, categoryApi } from '../lib/api';
+import { Product, Category, ProductSearchParams } from '../lib/types';
 
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  imageUrls: string[];
-  category: Category;
-  materialType: string;
-  inStock: boolean;
-  printTimeHours: number;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-  products?: Product[];
-}
-
-const CatalogPage = () => {
+export default function CatalogPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -50,13 +32,19 @@ const CatalogPage = () => {
           productApi.getAllProducts(),
           categoryApi.getAllCategories(),
         ]);
-        setProducts(productsRes.data);
-        setCategories([
-          { id: 0, name: "All Products", description: "All products", imageUrl: "" },
-          ...categoriesRes.data
-        ]);
+        
+        if (productsRes.data.status === 'success' && categoriesRes.data.status === 'success') {
+          setProducts(productsRes.data.data || []);
+          setCategories([
+            { id: 0, name: "All Products", description: "All products", imageUrl: "", createdAt: new Date().toISOString() },
+            ...(categoriesRes.data.data || [])
+          ]);
+        } else {
+          setError('Failed to fetch data');
+        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
+        setError('Failed to fetch data');
       } finally {
         setLoading(false);
       }
@@ -64,18 +52,34 @@ const CatalogPage = () => {
 
     fetchInitialData();
   }, []);
+
   const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      const response = await productApi.getAllProducts();
-      setProducts(response.data);
-      return;
-    }
     try {
       setLoading(true);
-      const response = await productApi.searchProducts(searchTerm);
-      setProducts(response.data.content);
+      setError(null);
+
+      const searchParams: ProductSearchParams = {
+        keyword: searchTerm,
+        page: 0,
+        size: 10,
+        sortBy: 'name',
+        sortDirection: 'asc'
+      };
+
+      if (!searchTerm.trim()) {
+        const response = await productApi.getAllProducts();
+        if (response.data.status === 'success') {
+          setProducts(response.data.data || []);
+        }
+      } else {
+        const response = await productApi.searchProducts(searchParams);
+        if (response.data.status === 'success') {
+          setProducts(response.data.data?.content || []);
+        }
+      }
     } catch (error) {
       console.error('Error searching products:', error);
+      setError('Failed to search products');
     } finally {
       setLoading(false);
     }
@@ -84,23 +88,28 @@ const CatalogPage = () => {
   const handleCategoryChange = async (categoryId: string) => {
     try {
       setLoading(true);
+      setError(null);
       setSelectedCategory(categoryId);
-      if (categoryId === "all") {
-        const response = await productApi.getAllProducts();
-        setProducts(response.data);
+
+      const response = categoryId === "all" 
+        ? await productApi.getAllProducts()
+        : await productApi.getProductsByCategory(Number(categoryId));
+
+      if (response.data.status === 'success') {
+        setProducts(response.data.data || []);
       } else {
-        const response = await productApi.getProductsByCategory(Number(categoryId));
-        setProducts(response.data);
+        setError('Failed to fetch products');
       }
     } catch (error) {
       console.error('Error filtering by category:', error);
+      setError('Failed to filter products');
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter products based on search term
-  const filteredProducts = products.filter(product => {
+  // Filter products based on search term locally
+  const filteredProducts = (products || []).filter(product => {
     const matchesSearch = searchTerm
       ? product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -114,6 +123,24 @@ const CatalogPage = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">{error}</h3>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -144,8 +171,16 @@ const CatalogPage = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-10"
               />
+              <Button
+                onClick={handleSearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                size="sm"
+              >
+                Search
+              </Button>
             </div>
           </div>
         </div>
@@ -270,6 +305,7 @@ const CatalogPage = () => {
                   onClick={() => {
                     setSearchTerm("");
                     setSelectedCategory("all");
+                    handleSearch();
                   }}
                 >
                   Clear Filters
@@ -284,5 +320,3 @@ const CatalogPage = () => {
     </div>
   );
 };
-
-export default CatalogPage;

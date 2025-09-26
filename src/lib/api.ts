@@ -15,9 +15,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
   },
-  withCredentials: true, // Important for CORS with credentials
 });
 
 // Add response interceptor to handle the ResponseDTO wrapper
@@ -38,18 +36,10 @@ api.interceptors.response.use(
     };
   },
   (error) => {
-    console.error('API Error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      headers: error.response?.headers,
-      config: error.config
-    });
     return Promise.reject({
       status: 'error',
       message: error.response?.data?.message || 'An error occurred',
       errors: error.response?.data?.errors,
-      statusCode: error.response?.status
     });
   }
 );
@@ -116,8 +106,8 @@ export const categoryApi = {
 
 // Contact form API calls
 export const contactApi = {
-  submitContactForm: (formData: ContactFormDTO) => 
-    api.post<ResponseDTO<void>>('/contact', formData),
+  submitContactForm: (formData: ContactFormDTO, fileId?: number) => 
+    api.post<ResponseDTO<void>>(`/api/queries${fileId ? `?fileId=${fileId}` : ''}`, formData),
 };
 
 // File upload API calls

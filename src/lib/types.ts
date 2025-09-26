@@ -50,9 +50,10 @@ export interface ProductDTO {
 export interface ContactFormDTO {
   name: string;
   email: string;
-  subject: string;
   message: string;
-  phone?: string;
+  projectType: string;
+  timeline: string;
+  fileId?: number;
 }
 
 export interface FileMetadata {

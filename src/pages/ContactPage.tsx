@@ -15,19 +15,83 @@ import {
   Send,
   Upload,
   MessageCircle,
-  CheckCircle
+  CheckCircle,
+  Instagram,
+  Trash
 } from "lucide-react";
 
+import { contactApi, fileApi } from "@/lib/api";
+
 const ContactPage = () => {
+  const { toast } = useToast();
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     message: "",
     projectType: "",
     timeline: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const [uploadedFile, setUploadedFile] = useState<{ id: number; name: string } | null>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      try {
+        const formData = new FormData();
+        formData.append('files', selectedFile);
+        
+        setIsSubmitting(true);
+        
+        const response = await fetch('/api/files/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        console.log('File upload response:', data); // Debug log
+        
+        if (response.ok && Array.isArray(data) && data.length > 0) {
+          // Handling array response where first item contains the file info
+          setUploadedFile({
+            id: data[0].id,
+            name: selectedFile.name
+          });
+          toast({
+            title: "Success",
+            description: "File uploaded successfully",
+          });
+        } else {
+          console.error('Upload response:', data); // Debug log
+          throw new Error('Could not process upload response');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast({
+          title: "Error",
+          description: "Failed to upload file. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleFileRemove = () => {
+    setUploadedFile(null);
+  };
 
   const contactInfo = [
     {
@@ -56,32 +120,51 @@ const ContactPage = () => {
     }
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    setTimeout(() => {
+
+    try {
+      const payload = {
+        ...formData,
+        ...(uploadedFile && { fileId: uploadedFile.id })
+      };
+
+      console.log('Submitting form with payload:', payload);
+
+      await fetch('/api/queries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
       toast({
         title: "Message Sent Successfully!",
         description: "We'll get back to you within 24 hours.",
       });
+
+      // Reset form
       setFormData({
         name: "",
         email: "",
+        phone: "",
         message: "",
         projectType: "",
         timeline: ""
       });
+      setUploadedFile(null);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        title: "Error",
+        description: "Please try again or contact us through other means.",
+        variant: "destructive"
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -102,7 +185,87 @@ const ContactPage = () => {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* Quick Actions Section - Top */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="p-6 hover:shadow-lg transition-all duration-300 bg-green-50 border-green-200 hover:bg-green-100/50">
+            <CardContent className="p-0 flex flex-col items-center text-center">
+              <div className="p-3 bg-green-500 rounded-lg mb-4">
+                <MessageCircle className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">WhatsApp</h3>
+              <p className="text-sm text-muted-foreground mb-4">Quick chat with our team</p>
+              <Button 
+                variant="default"
+                className="w-full bg-green-500 hover:bg-green-600"
+                onClick={() => window.open('https://wa.me/9730299386', '_blank')}
+              >
+                Chat Now
+              </Button>
+              <span className="mt-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">Online</span>
+            </CardContent>
+          </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50 border-pink-200 hover:from-purple-100/50 hover:to-pink-100/50">
+            <CardContent className="p-0 flex flex-col items-center text-center">
+              <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg mb-4">
+                <Instagram className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Instagram</h3>
+              <p className="text-sm text-muted-foreground mb-4">Follow our work</p>
+              <Button 
+                variant="default"
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                onClick={() => window.open('https://instagram.com/the_optimus_creations_official', '_blank')}
+              >
+                Follow Us
+              </Button>
+              <span className="mt-2 text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full">Social</span>
+            </CardContent>
+          </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-all duration-300 bg-blue-50 border-blue-200 hover:bg-blue-100/50">
+            <CardContent className="p-0 flex flex-col items-center text-center">
+              <div className="p-3 bg-blue-500 rounded-lg mb-4">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Email</h3>
+              <p className="text-sm text-muted-foreground mb-4">Send us your queries</p>
+              <Button 
+                variant="default"
+                className="w-full bg-blue-500 hover:bg-blue-600"
+                onClick={() => window.open('support@optimuscreations.com', '_blank')}
+              >
+                Send Email
+              </Button>
+              <span className="mt-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">24/7</span>
+            </CardContent>
+          </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-all duration-300 bg-primary/5 border-primary/20 hover:bg-primary/10">
+            <CardContent className="p-0 flex flex-col items-center text-center">
+              <div className="p-3 bg-primary rounded-lg mb-4">
+                <Phone className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Call Us</h3>
+              <p className="text-sm text-muted-foreground mb-4">Direct conversation</p>
+              <Button 
+                variant="default"
+                className="w-full"
+                onClick={() => window.open('tel:+91 9730299386', '_blank')}
+              >
+                Call Now
+              </Button>
+              <span className="mt-2 text-xs bg-primary text-white px-2 py-1 rounded-full">9AM-9PM</span>
+            </CardContent>
+          </Card>
+
+          
+        </div>
+      </div>
+
+      {/* Form Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-3 gap-12">
           {/* Contact Form */}
           <div className="lg:col-span-2">
@@ -183,15 +346,44 @@ const ContactPage = () => {
                   {/* File Upload */}
                   <div className="space-y-2">
                     <Label>Upload Files (Optional)</Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-smooth cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <div className="text-sm text-muted-foreground">
-                        <span className="text-primary">Click to upload</span> or drag and drop
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        STL, OBJ, PDF, JPG, PNG (Max 10MB)
-                      </div>
+                    <div 
+                      className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-smooth cursor-pointer"
+                      onClick={() => document.getElementById('fileUpload')?.click()}
+                    >
+                      {uploadedFile ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle className="w-6 h-6 text-green-500" />
+                          <span className="text-sm font-medium">{uploadedFile.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedFile(null);
+                            }}
+                          >
+                            <Trash className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <div className="text-sm text-muted-foreground">
+                            <span className="text-primary">Click to upload</span> or drag and drop
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            STL, OBJ, PDF, JPG, PNG (Max 100MB)
+                          </div>
+                        </>
+                      )}
                     </div>
+                    <input
+                      type="file"
+                      id="fileUpload"
+                      className="hidden"
+                      accept=".stl,.obj,.pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileChange}
+                    />
                   </div>
 
                   <Button 
@@ -244,41 +436,7 @@ const ContactPage = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
-            <Card className="p-6">
-              <CardHeader className="px-0 pt-0">
-                <CardTitle className="text-xl">Quick Actions</CardTitle>
-              </CardHeader>
 
-              <CardContent className="px-0 pb-0 space-y-4">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.open('https://wa.me/9730299386', '_blank')}
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  WhatsApp Chat
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.open('support@optimuscreations.com', '_blank')}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Email
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.open('tel:+91 9730299386', '_blank')}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call Now
-                </Button>
-              </CardContent>
-            </Card>
 
             {/* Response Time */}
             <Card className="p-6 bg-primary/5 border-primary/20">
