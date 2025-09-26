@@ -132,7 +132,7 @@ const ContactPage = () => {
 
       console.log('Submitting form with payload:', payload);
 
-      await fetch('/api/queries', {
+      await fetch(`/api/queries?fileId=${uploadedFile?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

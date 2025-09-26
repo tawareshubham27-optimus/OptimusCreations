@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminVerification } from "@/lib/useAdminVerification";
+import { productApi, categoryApi, fileApi } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash, Plus, Save, Upload, Loader2 } from "lucide-react";
-import { contactApi, fileApi } from "@/lib/api";
+import { Edit, Trash, Plus, Upload, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import {
   Select,
   SelectContent,
@@ -34,119 +36,144 @@ interface Message {
   response?: string;
 }
 
-// Define product type
+// Define product type (matching backend)
 interface Product {
   id: number;
   name: string;
-  category: string;
-  price: string;
-  image: string;
   description: string;
-  rating: number;
-  deliveryTime: string;
-  popular: boolean;
+  price: number;
+  imageUrl?: string;
+  categoryId: number;
+  category?: {
+    id: number;
+    name: string;
+    description?: string;
+  };
+  featured: boolean;
+  inStock: boolean;
+  rating?: number;
+  deliveryTime?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Available product categories
-const PRODUCT_CATEGORIES = [
-  { id: "architectural", name: "Architectural Models" },
-  { id: "miniatures", name: "Miniatures" },
-  { id: "keychains", name: "Keychains" },
-  { id: "gifts", name: "Custom Gifts" },
-  { id: "prototypes", name: "Prototypes" }
-];
-
-// File upload response interface (matches contact page format)
-interface FileUploadResponse {
+// Category interface
+interface Category {
   id: number;
   name: string;
-  url?: string;
-  path?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+// Product DTO for API calls
+interface ProductDTO {
+  name: string;
+  description: string;
+  price: number;
+  imageUrl?: string;
+  categoryId: number;
+  featured: boolean;
+  inStock: boolean;
+  rating?: number;
+  deliveryTime?: string;
 }
 
 // Product form component
-function ProductForm({ product, onSubmit, buttonText }: { 
+function ProductForm({ 
+  product, 
+  onSubmit, 
+  buttonText,
+  categories,
+  loading 
+}: { 
   product?: Product;
-  onSubmit: (data: Omit<Product, 'id'>) => void;
+  onSubmit: (data: ProductDTO) => Promise<void>;
   buttonText: string;
+  categories: Category[];
+  loading: boolean;
 }) {
   const [form, setForm] = useState({
     name: product?.name || "",
-    category: product?.category || "architectural",
-    price: product?.price || "",
-    image: product?.image || "",
     description: product?.description || "",
+    price: product?.price || 0,
+    imageUrl: product?.imageUrl || "",
+    categoryId: product?.categoryId || (categories[0]?.id || 1),
+    featured: product?.featured || false,
+    inStock: product?.inStock !== false,
     rating: product?.rating || 5,
-    deliveryTime: product?.deliveryTime || "",
-    popular: product?.popular || false
+    deliveryTime: product?.deliveryTime || ""
   });
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState(product?.image || "");
+  const [previewUrl, setPreviewUrl] = useState(product?.imageUrl || "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value, type, checked } = e.target;
+  useEffect(() => {
+    if (product) {
+      setForm({
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        imageUrl: product.imageUrl || "",
+        categoryId: product.categoryId,
+        featured: product.featured,
+        inStock: product.inStock,
+        rating: product.rating || 5,
+        deliveryTime: product.deliveryTime || ""
+      });
+      setPreviewUrl(product.imageUrl || "");
+    }
+  }, [product]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    
     setForm(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : type === "number" ? parseFloat(value) || 0 : value
     }));
   }
 
   function handleCategoryChange(value: string) {
     setForm(prev => ({
       ...prev,
-      category: value
+      categoryId: parseInt(value)
     }));
   }
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type
       if (!selectedFile.type.startsWith('image/')) {
         setUploadError('Please select a valid image file');
         return;
       }
 
-      // Validate file size (max 100MB)
-      if (selectedFile.size > 100 * 1024 * 1024) {
-        setUploadError('File size must be less than 100MB');
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        setUploadError('File size must be less than 10MB');
         return;
       }
 
       try {
-        const formData = new FormData();
-        formData.append('files', selectedFile);
-        
         setIsUploading(true);
         setUploadError("");
         
-         const response = await fetch('http://localhost:8080/api/files/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        console.log('File upload response:', data);
+        const response = await fileApi.uploadFile(selectedFile, 'image');
         
-        if (response.ok && Array.isArray(data) && data.length > 0) {
-          // Set the uploaded file URL
-          const uploadedUrl = data[0].url || data[0].path || '';
+        if (response.data.status === 'success' && response.data.data) {
+          const uploadedUrl = response.data.data.url || response.data.data.path || '';
           setForm(prev => ({
             ...prev,
-            image: uploadedUrl
+            imageUrl: uploadedUrl
           }));
           setPreviewUrl(uploadedUrl);
-          setImageFile(null); // Clear the file since it's uploaded
         } else {
-          console.error('Upload response:', data);
           setUploadError('Could not process upload response');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error uploading file:', error);
-        setUploadError('Failed to upload file. Please try again.');
+        setUploadError(error.message || 'Failed to upload file. Please try again.');
       } finally {
         setIsUploading(false);
       }
@@ -154,287 +181,205 @@ function ProductForm({ product, onSubmit, buttonText }: {
   };
 
   function removeImage() {
-    // Reset file input
     const fileInput = document.getElementById("imageUpload") as HTMLInputElement;
     if (fileInput) fileInput.value = "";
     
-    // Clean up the old preview URL if it's a blob URL
     if (previewUrl && previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(previewUrl);
     }
     
-    // Reset image state
-    setImageFile(null);
     setPreviewUrl("");
     setUploadError("");
-    setForm(prev => ({
-      ...prev,
-      image: ""
-    }));
+    setForm(prev => ({ ...prev, imageUrl: "" }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setUploadError("");
-    
-    let imageUrl = form.image;
-    
-    // Handle image upload if there's a new file
-    if (imageFile) {
-      setIsUploading(true);
-      
-      try {
-        const uploadResult = await uploadFile(imageFile);
-        
-        if (uploadResult.success && uploadResult.url) {
-          imageUrl = uploadResult.url;
-          
-          // Clean up the preview URL since we now have the actual URL
-          if (previewUrl && previewUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(previewUrl);
-          }
-          setPreviewUrl(uploadResult.url);
-        } else {
-          setUploadError(uploadResult.error || 'Failed to upload image');
-          setIsUploading(false);
-          return;
-        }
-      } catch (error) {
-        setUploadError('Failed to upload image. Please try again.');
-        setIsUploading(false);
-        return;
-      } finally {
-        setIsUploading(false);
+    try {
+      await onSubmit(form);
+      if (!product) {
+        setForm({
+          name: "",
+          description: "",
+          price: 0,
+          imageUrl: "",
+          categoryId: categories[0]?.id || 1,
+          featured: false,
+          inStock: true,
+          rating: 5,
+          deliveryTime: ""
+        });
+        setPreviewUrl("");
+        setUploadError("");
       }
-    }
-
-    onSubmit({
-      ...form,
-      image: imageUrl
-    });
-
-    if (!product) {
-      // Reset form only for new products
-      setForm({
-        name: "",
-        category: "architectural",
-        price: "",
-        image: "",
-        description: "",
-        rating: 5,
-        deliveryTime: "",
-        popular: false
-      });
-      setImageFile(null);
-      setPreviewUrl("");
-      setUploadError("");
+    } catch (error) {
+      console.error('Error submitting form:', error);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Name, Category, Price, Rating, DeliveryTime Inputs */}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="text-sm font-medium">Name</label>
-          <Input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Product Name"
-            required
-          />
+          <label className="text-sm font-medium">Name *</label>
+          <Input name="name" value={form.name} onChange={handleChange} placeholder="Product Name" required disabled={loading} />
         </div>
         <div>
-          <label className="text-sm font-medium">Category</label>
-          <Select
-            value={form.category}
-            onValueChange={handleCategoryChange}
-          >
+          <label className="text-sm font-medium">Category *</label>
+          <Select value={form.categoryId.toString()} onValueChange={handleCategoryChange} disabled={loading}>
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {PRODUCT_CATEGORIES.map(category => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
+              {categories.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <label className="text-sm font-medium">Price</label>
-          <Input
-            name="price"
-            value={form.price}
-            onChange={handleChange}
-            placeholder="Price"
-            required
-          />
+          <label className="text-sm font-medium">Price *</label>
+          <Input name="price" type="number" step="0.01" min="0" value={form.price} onChange={handleChange} required disabled={loading} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Rating</label>
+          <Input name="rating" type="number" value={form.rating} onChange={handleChange} min={1} max={5} step={0.1} disabled={loading} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Delivery Time</label>
+          <Input name="deliveryTime" value={form.deliveryTime} onChange={handleChange} placeholder="e.g., 3-5 days" disabled={loading} />
         </div>
         <div>
           <label className="text-sm font-medium">Image</label>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                id="imageUpload"
-                disabled={isUploading}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => document.getElementById("imageUpload")?.click()}
-                className="flex-1"
-                disabled={isUploading}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Image
-                  </>
-                )}
+              <Input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="imageUpload" disabled={isUploading || loading} />
+              <Button type="button" variant="secondary" onClick={() => document.getElementById("imageUpload")?.click()} className="flex-1" disabled={isUploading || loading}>
+                {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin"/>Uploading...</> : <><Upload className="w-4 h-4 mr-2"/>Upload Image</>}
               </Button>
-              {previewUrl && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={removeImage}
-                  disabled={isUploading}
-                >
-                  <Trash className="w-4 h-4" />
-                </Button>
-              )}
+              {previewUrl && <Button type="button" variant="destructive" onClick={removeImage} disabled={isUploading || loading}><Trash className="w-4 h-4"/></Button>}
             </div>
-            {uploadError && (
-              <p className="text-sm text-red-500">{uploadError}</p>
-            )}
-            {previewUrl && (
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+            {uploadError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertDescription>{uploadError}</AlertDescription></Alert>}
+            {previewUrl && <div className="aspect-video bg-muted rounded-lg overflow-hidden"><img src={previewUrl} alt="Preview" className="w-full h-full object-cover"/></div>}
           </div>
         </div>
         <div className="md:col-span-2">
-          <label className="text-sm font-medium">Description</label>
-          <Input
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            placeholder="Description"
-            required
-          />
+          <label className="text-sm font-medium">Description *</label>
+          <textarea name="description" value={form.description} onChange={handleChange} placeholder="Product description" required disabled={loading} className="w-full min-h-[100px] px-3 py-2 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
         </div>
-        <div>
-          <label className="text-sm font-medium">Rating (1-5)</label>
-          <Input
-            name="rating"
-            type="number"
-            value={form.rating}
-            onChange={handleChange}
-            min="1"
-            max="5"
-            step="0.1"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">Delivery Time</label>
-          <Input
-            name="deliveryTime"
-            value={form.deliveryTime}
-            onChange={handleChange}
-            placeholder="e.g., 3-5 days"
-            required
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <input
-            name="popular"
-            type="checkbox"
-            checked={form.popular}
-            onChange={handleChange}
-            className="rounded border-gray-300"
-          />
-          <label className="text-sm font-medium">Popular Product</label>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <input name="featured" type="checkbox" checked={form.featured} onChange={handleChange} disabled={loading} className="rounded border-gray-300"/>
+            <label className="text-sm font-medium">Featured Product</label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input name="inStock" type="checkbox" checked={form.inStock} onChange={handleChange} disabled={loading} className="rounded border-gray-300"/>
+            <label className="text-sm font-medium">In Stock</label>
+          </div>
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isUploading}>
-        {isUploading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          buttonText
-        )}
-      </Button>
+      <Button type="submit" className="w-full" disabled={loading || isUploading}>{buttonText}</Button>
     </form>
   );
 }
 
 export default function AdminPage() {
-  const { isVerified, error, handleVerify } = useAdminVerification();
+  const { isVerified, error: verificationError, handleVerify } = useAdminVerification();
   const [adminPassword, setAdminPassword] = useState("");
   const [activeTab, setActiveTab] = useState<'products' | 'messages'>('products');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [responseText, setResponseText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState(""); // Renamed
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
-  // Admin: Add product
-  function handleAddProduct(productData: Omit<Product, 'id'>) {
-    const newProduct = {
-      ...productData,
-      id: Date.now()
-    };
-    setProducts(prev => [...prev, newProduct]);
-  }
+  useEffect(() => {
+    if (isVerified) {
+      loadProducts();
+      loadCategories();
+    }
+  }, [isVerified]);
 
-  // Admin: Update product
-  function handleUpdateProduct(productData: Omit<Product, 'id'>) {
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await productApi.getAllProducts();
+      if (response.data.status === 'success') setProducts(response.data.data || []);
+    } catch (error: any) { setLocalError(error.message || 'Failed to load products'); } 
+    finally { setLoading(false); }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const response = await categoryApi.getAllCategories();
+      if (response.data.status === 'success') setCategories(response.data.data || []);
+    } catch (error: any) { console.error(error); }
+  };
+
+  const handleAddProduct = async (productData: ProductDTO) => {
+    try {
+      setLoading(true);
+      setLocalError("");
+      const response = await productApi.createProduct(productData);
+      if (response.data.status === 'success') {
+        setSuccess("Product created successfully!");
+        await loadProducts();
+        setTimeout(() => setSuccess(""), 3000);
+      }
+    } catch (error: any) { setLocalError(error.message || 'Failed to create product'); setTimeout(() => setLocalError(""), 5000); }
+    finally { setLoading(false); }
+  };
+
+  const handleUpdateProduct = async (productData: ProductDTO) => {
     if (!editingProduct) return;
-    
-    setProducts(prev => prev.map(p => 
-      p.id === editingProduct.id ? { ...productData, id: p.id } : p
-    ));
-    setEditingProduct(null);
-  }
+    try {
+      setLoading(true);
+      setLocalError("");
+      const response = await productApi.updateProduct(editingProduct.id, productData);
+      if (response.data.status === 'success') {
+        setSuccess("Product updated successfully!");
+        setEditingProduct(null);
+        await loadProducts();
+        setTimeout(() => setSuccess(""), 3000);
+      }
+    } catch (error: any) { setLocalError(error.message || 'Failed to update product'); setTimeout(() => setLocalError(""), 5000); }
+    finally { setLoading(false); }
+  };
 
-  // Admin: Delete product
-  function handleDeleteProduct(id: number) {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  }
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    try {
+      setLoading(true);
+      setLocalError("");
+      const response = await productApi.deleteProduct(id);
+      if (response.data.status === 'success') { setSuccess("Product deleted successfully!"); await loadProducts(); setTimeout(() => setSuccess(""), 3000); }
+    } catch (error: any) { setLocalError(error.message || 'Failed to delete product'); setTimeout(() => setLocalError(""), 5000); }
+    finally { setLoading(false); }
+  };
 
-  // Admin: Update message status
-  function handleUpdateMessageStatus(id: number, status: MessageStatus) {
-    setMessages(prev => prev.map(m =>
-      m.id === id ? { ...m, status } : m
-    ));
-  }
+  const handleToggleFeatured = async (id: number) => {
+    try { const response = await productApi.toggleFeatured(id); if (response.data.status === 'success') await loadProducts(); }
+    catch (error: any) { setLocalError(error.message || 'Failed to toggle featured status'); setTimeout(() => setLocalError(""), 5000); }
+  };
 
-  // Admin: Add response to message
-  function handleAddMessageResponse(id: number, response: string) {
-    setMessages(prev => prev.map(m =>
-      m.id === id ? { ...m, response, status: MessageStatus.Resolved } : m
-    ));
+  const handleToggleStock = async (id: number, inStock: boolean) => {
+    try { const response = await productApi.updateStock(id, inStock); if (response.data.status === 'success') await loadProducts(); }
+    catch (error: any) { setLocalError(error.message || 'Failed to toggle stock status'); setTimeout(() => setLocalError(""), 5000); }
+  };
+
+  const handleUpdateMessageStatus = (id: number, status: MessageStatus) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, status } : m));
+  };
+
+  const handleAddMessageResponse = (id: number, response: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, response, status: MessageStatus.Resolved } : m));
     setSelectedMessage(null);
-  }
+    setResponseText("");
+  };
 
   if (!isVerified) {
     return (
@@ -442,29 +387,12 @@ export default function AdminPage() {
         <Navbar />
         <div className="max-w-md mx-auto mt-20 p-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Admin Verification</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Admin Verification</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Admin Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Enter admin password"
-                    value={adminPassword}
-                    onChange={e => setAdminPassword(e.target.value)}
-                  />
-                </div>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleVerify(adminPassword)}
-                >
-                  Verify
-                </Button>
-                {error && (
-                  <div className="text-red-500 text-sm text-center">{error}</div>
-                )}
+                <Input type="password" placeholder="Enter admin password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} />
+                <Button className="w-full" onClick={() => handleVerify(adminPassword)}>Verify</Button>
+                {verificationError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertDescription>{verificationError}</AlertDescription></Alert>}
               </div>
             </CardContent>
           </Card>
@@ -477,206 +405,94 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="space-x-4">
-            <Button 
-              variant={activeTab === 'products' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('products')}
-            >
-              Product Management
-            </Button>
-            <Button 
-              variant={activeTab === 'messages' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('messages')}
-            >
-              User Messages
-              {messages.filter(m => m.status === MessageStatus.New).length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {messages.filter(m => m.status === MessageStatus.New).length}
-                </Badge>
-              )}
-            </Button>
-          </div>
-          {activeTab === 'products' && (
-            <Button onClick={() => navigate("/catalog")}>View Catalog</Button>
-          )}
+        {success && <Alert className="mb-6 border-green-200 bg-green-50"><CheckCircle className="h-4 w-4 text-green-600"/><AlertDescription className="text-green-800">{success}</AlertDescription></Alert>}
+        {localError && <Alert variant="destructive" className="mb-6"><AlertCircle className="h-4 w-4"/><AlertDescription>{localError}</AlertDescription></Alert>}
+        {/* Tabs */}
+        <div className="flex space-x-4 mb-6">
+          <Button variant={activeTab === 'products' ? 'default' : 'outline'} onClick={() => setActiveTab('products')}>Products</Button>
+          <Button variant={activeTab === 'messages' ? 'default' : 'outline'} onClick={() => setActiveTab('messages')}>Messages</Button>
         </div>
 
-        {/* Add/Edit Product Form */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>
-              {editingProduct ? "Edit Product" : "Add New Product"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProductForm
-              product={editingProduct || undefined}
-              onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct}
-              buttonText={editingProduct ? "Update Product" : "Add Product"}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Messages Section */}
-        {activeTab === 'messages' && (
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Messages List */}
+        {activeTab === 'products' && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Messages</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {messages.map(message => (
-                    <Card 
-                      key={message.id}
-                      className={`cursor-pointer hover:shadow-md transition-shadow ${selectedMessage?.id === message.id ? 'border-primary' : ''}`}
-                      onClick={() => setSelectedMessage(message)}
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg">{message.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{message.email}</p>
-                          </div>
-                          <Badge 
-                            variant={message.status === MessageStatus.New ? 'destructive' : 
-                                   message.status === MessageStatus.InProgress ? 'default' : 'secondary'}
-                          >
-                            {message.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="line-clamp-2 text-sm text-muted-foreground">{message.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">{new Date(message.createdAt).toLocaleDateString()}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <ProductForm
+                  product={editingProduct || undefined}
+                  categories={categories}
+                  buttonText={editingProduct ? "Update Product" : "Add Product"}
+                  loading={loading}
+                  onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct}
+                />
               </CardContent>
             </Card>
 
-            {/* Message Detail */}
-            {selectedMessage && (
-              <Card>
+            {products.map(product => (
+              <Card key={product.id} className="relative">
+                {product.featured && <Badge className="absolute top-2 right-2 bg-yellow-300 text-yellow-800">Featured</Badge>}
                 <CardHeader>
-                  <CardTitle>Message Details</CardTitle>
+                  <CardTitle>{product.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold">From</h3>
-                    <p>{selectedMessage.name} ({selectedMessage.email})</p>
+                <CardContent>
+                  {product.imageUrl && <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover rounded-lg mb-2" />}
+                  <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
+                  <p className="text-sm font-medium">Price: ₹{product.price.toFixed(2)}</p>
+                  <p className="text-sm font-medium">Category: {product.category?.name || "N/A"}</p>
+                  <div className="flex justify-between mt-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingProduct(product)}><Edit className="w-4 h-4"/></Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteProduct(product.id)}><Trash className="w-4 h-4"/></Button>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">Message</h3>
-                    <p className="whitespace-pre-wrap">{selectedMessage.message}</p>
+                  <div className="flex space-x-2 mt-2">
+                    <Button size="sm" onClick={() => handleToggleFeatured(product.id)}>{product.featured ? "Unfeature" : "Feature"}</Button>
+                    <Button size="sm" onClick={() => handleToggleStock(product.id, !product.inStock)}>{product.inStock ? "Mark Out of Stock" : "Mark In Stock"}</Button>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">Status</h3>
-                    <Select
-                      value={selectedMessage.status}
-                      onValueChange={(value: MessageStatus) => handleUpdateMessageStatus(selectedMessage.id, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Update status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(MessageStatus).map(status => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {selectedMessage.response ? (
-                    <div>
-                      <h3 className="font-semibold">Your Response</h3>
-                      <p className="whitespace-pre-wrap">{selectedMessage.response}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <h3 className="font-semibold">Respond</h3>
-                      <Input
-                        as="textarea"
-                        placeholder="Type your response..."
-                        value={responseText}
-                        onChange={(e) => setResponseText(e.target.value)}
-                        className="min-h-[100px]"
-                      />
-                      <Button 
-                        className="w-full" 
-                        onClick={() => handleAddMessageResponse(selectedMessage.id, responseText)}
-                      >
-                        Send Response
-                      </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              {messages.map(msg => (
+                <Card key={msg.id} className={`cursor-pointer ${selectedMessage?.id === msg.id ? 'border-2 border-blue-400' : ''}`} onClick={() => setSelectedMessage(msg)}>
+                  <CardContent>
+                    <p className="font-medium">{msg.name} ({msg.email})</p>
+                    <p className="text-sm text-muted-foreground">{msg.message.slice(0,50)}...</p>
+                    <Badge className="mt-2">{msg.status}</Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {selectedMessage && (
+              <Card className="md:col-span-2 space-y-4">
+                <CardHeader><CardTitle>Message Details</CardTitle></CardHeader>
+                <CardContent>
+                  <p><strong>Name:</strong> {selectedMessage.name}</p>
+                  <p><strong>Email:</strong> {selectedMessage.email}</p>
+                  <p><strong>Message:</strong> {selectedMessage.message}</p>
+                  <Select value={selectedMessage.status} onValueChange={(v) => handleUpdateMessageStatus(selectedMessage.id, v as MessageStatus)}>
+                    <SelectTrigger><SelectValue placeholder="Select status"/></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <textarea placeholder="Type your response..." value={responseText} onChange={e => setResponseText(e.target.value)} className="w-full h-32 border rounded p-2"/>
+                  <Button onClick={() => handleAddMessageResponse(selectedMessage.id, responseText)}>Send Response</Button>
+                  {selectedMessage.response && (
+                    <div className="mt-2 p-2 border rounded bg-green-50">
+                      <strong>Response:</strong>
+                      <p>{selectedMessage.response}</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             )}
           </div>
-        )}
-
-        {/* Products List */}
-        {activeTab === 'products' && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {products.map(product => (
-            <Card key={product.id} className="flex flex-col">
-              <CardHeader>
-                <div className="aspect-video bg-muted relative rounded-lg overflow-hidden mb-4">
-                  {product.image ? (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      No Image
-                    </div>
-                  )}
-                </div>
-                <CardTitle className="flex justify-between items-start">
-                  <span>{product.name}</span>
-                  <span className="text-primary">{product.price}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-muted-foreground mb-4">{product.description}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge>{product.category}</Badge>
-                  <Badge variant="secondary">{product.deliveryTime}</Badge>
-                  {product.popular && (
-                    <Badge variant="destructive">Popular</Badge>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setEditingProduct(product)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
-                    <Trash className="w-4 h-4 mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
         )}
       </div>
     </div>
