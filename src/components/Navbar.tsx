@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Printer } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,10 +23,24 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="p-2 bg-gradient-primary rounded-lg">
-              <Printer className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <img
+              src={logo}
+              alt="Logo"
+              className="
+                object-contain 
+                h-10 w-auto             /* default on mobile */
+                sm:h-12                 /* small screens */
+                md:h-14                 /* medium screens */
+                lg:h-16                 /* large screens */
+                max-h-16 max-w-full
+              "
+            />
+            <span className="
+              text-lg font-bold
+              sm:text-xl
+              md:text-2xl
+              bg-gradient-primary bg-clip-text text-transparent
+            ">
               OptimusCreations
             </span>
           </Link>
@@ -45,8 +60,8 @@ const Navbar = () => {
                 {item.name}
               </Link>
             ))}
-            <Button 
-              variant="hero" 
+            <Button
+              variant="hero"
               size="sm"
               onClick={() => {
                 navigate("/contact");
@@ -88,8 +103,8 @@ const Navbar = () => {
                 </Link>
               ))}
               <div className="px-3 py-2">
-                <Button 
-                  variant="hero" 
+                <Button
+                  variant="hero"
                   className="w-full"
                   onClick={() => {
                     navigate("/contact");

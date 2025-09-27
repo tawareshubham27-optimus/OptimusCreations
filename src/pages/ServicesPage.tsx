@@ -13,8 +13,11 @@ import {
   CheckCircle,
   ArrowRight
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const ServicesPage = () => {
+  const navigate = useNavigate();
+
   const services = [
     {
       category: "Architectural Models",
@@ -33,7 +36,7 @@ const ServicesPage = () => {
         "Layer height: 0.1-0.3mm",
         "Post-processing available"
       ],
-      pricing: "Starting at $50"
+      pricing: "Starting at Rs 3000"
     },
     {
       category: "Custom Gifts & Keychains",
@@ -52,7 +55,7 @@ const ServicesPage = () => {
         "Bulk order discounts",
         "Fast turnaround times"
       ],
-      pricing: "Starting at $5"
+      pricing: "Starting at Rs 50"
     }
   ];
 
@@ -87,7 +90,7 @@ const ServicesPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 to-accent/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -99,7 +102,11 @@ const ServicesPage = () => {
             From architectural models to personalized gifts, we deliver precision 3D printing services 
             with exceptional quality and fast turnaround times.
           </p>
-          <Button variant="hero" size="lg">
+          <Button 
+            variant="hero" 
+            size="lg"
+            onClick={() => navigate("/contact")}
+          >
             Get Started Today
           </Button>
         </div>
@@ -109,7 +116,7 @@ const ServicesPage = () => {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-1 gap-12">
-            {services.map((service, index) => (
+            {services.map((service) => (
               <Card key={service.category} className="p-8 hover:shadow-card-hover transition-smooth">
                 <div className="grid lg:grid-cols-2 gap-8 items-start">
                   <div>
@@ -143,7 +150,10 @@ const ServicesPage = () => {
                         <Badge variant="secondary" className="text-lg font-bold px-4 py-2">
                           {service.pricing}
                         </Badge>
-                        <Button variant="default">
+                        <Button 
+                          variant="default"
+                          onClick={() => navigate("/contact")}
+                        >
                           Request Quote
                           <ArrowRight className="w-4 h-4" />
                         </Button>

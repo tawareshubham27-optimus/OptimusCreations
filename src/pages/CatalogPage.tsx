@@ -245,7 +245,7 @@ export default function CatalogPage() {
                     <img 
                       src={product.imageUrls?.[0] || '/placeholder.svg'} 
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                     className="w-full h-full object-contain bg-muted group-hover:scale-105 transition-transform duration-500"
                     />
                     {product.inStock && (
                       <Badge className="absolute top-3 left-3 bg-green-500 text-white">
@@ -263,7 +263,7 @@ export default function CatalogPage() {
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                       <div className="text-right flex-shrink-0 ml-2">
-                        <div className="text-lg font-bold text-primary">${product.price.toFixed(2)}</div>
+                        <div className="text-lg font-bold text-primary">Rs {product.price.toFixed(2)}</div>
                       </div>
                     </div>
                     <CardDescription className="text-sm">

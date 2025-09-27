@@ -3,8 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Building, Gift, ArrowRight } from "lucide-react";
 import architecturalModel from "@/assets/architectural-model.jpg";
 import customGifts from "@/assets/custom-gifts.jpg";
+import { useNavigate } from "react-router-dom";
 
-const Services = () => {
+export default function Services() {
+  const navigate = useNavigate();
+
   const services = [
     {
       icon: Building,
@@ -85,7 +88,14 @@ const Services = () => {
                 </div>
 
                 {/* CTA */}
-                <Button variant="default" className="w-full group">
+                <Button
+                  variant="default"
+                  className="w-full group"
+                  onClick={() => {
+          navigate("/services");
+          window.scrollTo(0, 0); // Scroll to top after navigation
+          }}// Navigate to Services page
+                >
                   Learn More
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
@@ -96,13 +106,18 @@ const Services = () => {
 
         {/* Bottom CTA */}
         <div className="text-center mt-16">
-          <Button variant="hero" size="lg">
-            View All Services
-          </Button>
+         <Button 
+          variant="hero" 
+          size="lg"
+          onClick={() => {
+          navigate("/services");
+          window.scrollTo(0, 0); // Scroll to top after navigation
+          }}
+>
+  View All Services
+</Button>
         </div>
       </div>
     </section>
   );
-};
-
-export default Services;
+}

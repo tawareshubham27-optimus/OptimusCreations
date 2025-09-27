@@ -496,12 +496,12 @@ const ContactPage = () => {
               <h3 className="font-semibold mb-2">How much does it cost?</h3>
               <p className="text-sm text-muted-foreground mb-6">
                 Pricing depends on size, complexity, material, and quantity. Most small items 
-                start at $5, architectural models typically range from $50-500.
+                start at Rs 50, architectural models typically range from Rs 50-5000.
               </p>
 
               <h3 className="font-semibold mb-2">Do you ship nationwide?</h3>
               <p className="text-sm text-muted-foreground">
-                Yes, we ship anywhere in the US. Local pickup is also available at our facility. 
+                Yes, we ship anywhere in the India. Local pickup is also available at our facility. 
                 Shipping costs are calculated based on size and destination.
               </p>
             </div>

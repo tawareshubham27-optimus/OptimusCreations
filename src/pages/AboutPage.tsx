@@ -145,16 +145,7 @@ const AboutPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="aspect-square bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg"></div>
-                <div className="aspect-video bg-gradient-to-br from-accent/20 to-primary/20 rounded-lg"></div>
-              </div>
-              <div className="space-y-4 pt-8">
-                <div className="aspect-video bg-gradient-to-br from-tech-purple/20 to-tech-cyan/20 rounded-lg"></div>
-                <div className="aspect-square bg-gradient-to-br from-warm-orange/20 to-primary/20 rounded-lg"></div>
-              </div>
-            </div>
+            
           </div>
         </div>
       </section>
@@ -190,7 +181,7 @@ const AboutPage = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20">
+      {/*<section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-6">What Our Clients Say</h2>
@@ -223,7 +214,7 @@ const AboutPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-hero">

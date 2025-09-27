@@ -2,10 +2,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, X } from "lucide-react";
 import heroImage from "@/assets/hero-3d-printer.jpg";
+import logo from "@/assets/logo.png";
 
 import { useState } from "react";
 
-const DEMO_VIDEO_URL = "http://drive.google.com/file/d/1fUNqfeD8yZhgRv8XeTr_z8bnjQ3zhwQc/view?usp=drivesdk"; // Example video URL
+const DEMO_VIDEO_URL = "https://optimus-creations-s3.s3.ap-south-1.amazonaws.com/3dprint.mp4"; // Example video URL
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -17,8 +18,8 @@ const Hero = () => {
         <div 
           className="absolute inset-0 opacity-20"
           style={{
-            backgroundImage: `url(${heroImage})`,
-            backgroundSize: 'cover',
+            backgroundImage: `url(${logo})`,
+            backgroundSize: 'contain',
             backgroundPosition: 'center',
           }}
         />
