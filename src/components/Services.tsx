@@ -113,7 +113,7 @@ export default function Services() {
           navigate("/services");
           window.scrollTo(0, 0); // Scroll to top after navigation
           }}
->
+          >
   View All Services
 </Button>
         </div>
