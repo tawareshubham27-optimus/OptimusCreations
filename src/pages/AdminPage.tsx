@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+
 // Message status type
 enum MessageStatus {
   New = 'new',
@@ -145,24 +146,24 @@ function ProductForm({
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (!selectedFile.type.startsWith('image/')) {
-        setUploadError('Please select a valid image file');
-        return;
-      }
-
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setUploadError('File size must be less than 10MB');
-        return;
-      }
+     
 
       try {
         setIsUploading(true);
         setUploadError("");
         
-        const response = await fileApi.uploadFile(selectedFile, 'image');
+        const formData = new FormData();
+        formData.append('files', selectedFile);
         
-        if (response.data.status === 'success' && response.data.data) {
-          const uploadedUrl = response.data.data.url || response.data.data.path || '';
+        const response = await fetch('/api/files/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data) && data.length > 0) {
+          const uploadedUrl = data[0].s3Url || data[0].imageUrl || '';
           setForm(prev => ({
             ...prev,
             imageUrl: uploadedUrl
@@ -171,7 +172,7 @@ function ProductForm({
         } else {
           setUploadError('Could not process upload response');
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error uploading file:', error);
         setUploadError(error.message || 'Failed to upload file. Please try again.');
       } finally {
@@ -308,8 +309,11 @@ export default function AdminPage() {
     try {
       setLoading(true);
       const response = await productApi.getAllProducts();
-      if (response.data.status === 'success') setProducts(response.data.data || []);
-    } catch (error: any) { setLocalError(error.message || 'Failed to load products'); } 
+      if (response.data.status === 'success') {
+          setProducts(response.data.data || []);
+         
+        }
+    } catch (error) { setLocalError(error.message || 'Failed to load products'); } 
     finally { setLoading(false); }
   };
 
@@ -317,7 +321,7 @@ export default function AdminPage() {
     try {
       const response = await categoryApi.getAllCategories();
       if (response.data.status === 'success') setCategories(response.data.data || []);
-    } catch (error: any) { console.error(error); }
+    } catch (error) { console.error(error); }
   };
 
   const handleAddProduct = async (productData: ProductDTO) => {
@@ -330,7 +334,7 @@ export default function AdminPage() {
         await loadProducts();
         setTimeout(() => setSuccess(""), 3000);
       }
-    } catch (error: any) { setLocalError(error.message || 'Failed to create product'); setTimeout(() => setLocalError(""), 5000); }
+    } catch (error) { setLocalError(error.message || 'Failed to create product'); setTimeout(() => setLocalError(""), 5000); }
     finally { setLoading(false); }
   };
 
@@ -346,7 +350,7 @@ export default function AdminPage() {
         await loadProducts();
         setTimeout(() => setSuccess(""), 3000);
       }
-    } catch (error: any) { setLocalError(error.message || 'Failed to update product'); setTimeout(() => setLocalError(""), 5000); }
+    } catch (error) { setLocalError(error.message || 'Failed to update product'); setTimeout(() => setLocalError(""), 5000); }
     finally { setLoading(false); }
   };
 
@@ -357,18 +361,18 @@ export default function AdminPage() {
       setLocalError("");
       const response = await productApi.deleteProduct(id);
       if (response.data.status === 'success') { setSuccess("Product deleted successfully!"); await loadProducts(); setTimeout(() => setSuccess(""), 3000); }
-    } catch (error: any) { setLocalError(error.message || 'Failed to delete product'); setTimeout(() => setLocalError(""), 5000); }
+    } catch (error) { setLocalError(error.message || 'Failed to delete product'); setTimeout(() => setLocalError(""), 5000); }
     finally { setLoading(false); }
   };
 
   const handleToggleFeatured = async (id: number) => {
     try { const response = await productApi.toggleFeatured(id); if (response.data.status === 'success') await loadProducts(); }
-    catch (error: any) { setLocalError(error.message || 'Failed to toggle featured status'); setTimeout(() => setLocalError(""), 5000); }
+    catch (error) { setLocalError(error.message || 'Failed to toggle featured status'); setTimeout(() => setLocalError(""), 5000); }
   };
 
   const handleToggleStock = async (id: number, inStock: boolean) => {
     try { const response = await productApi.updateStock(id, inStock); if (response.data.status === 'success') await loadProducts(); }
-    catch (error: any) { setLocalError(error.message || 'Failed to toggle stock status'); setTimeout(() => setLocalError(""), 5000); }
+    catch (error) { setLocalError(error.message || 'Failed to toggle stock status'); setTimeout(() => setLocalError(""), 5000); }
   };
 
   const handleUpdateMessageStatus = (id: number, status: MessageStatus) => {

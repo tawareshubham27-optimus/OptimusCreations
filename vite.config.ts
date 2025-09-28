@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://optimus-creations-backend.onrender.com',
         changeOrigin: true,
       },
     },
@@ -21,4 +21,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  base: "/",
 }));

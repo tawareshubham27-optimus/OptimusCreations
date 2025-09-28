@@ -166,7 +166,9 @@ const ContactPage = () => {
       setIsSubmitting(false);
     }
   };
-
+ const phoneNumber = "9730299386"; // Replace with actual WhatsApp number
+  const message = "Hi! I'm interested in your 3D printing services. Could you please provide more information?";
+  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -198,7 +200,8 @@ const ContactPage = () => {
               <Button 
                 variant="default"
                 className="w-full bg-green-500 hover:bg-green-600"
-                onClick={() => window.open('https://wa.me/9730299386', '_blank')}
+                
+                onClick={() => window.open(url, '_blank')}
               >
                 Chat Now
               </Button>

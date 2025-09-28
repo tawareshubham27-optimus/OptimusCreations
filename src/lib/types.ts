@@ -20,7 +20,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: Category;
+  categoryId: number;
   imageUrls: string[];
   stlFileUrl: string | null;
   cadFileUrl: string | null;
@@ -38,7 +38,7 @@ export interface ProductDTO {
   description: string;
   price: number;
   categoryId: number;
-  imageUrls: string[];
+  imageUrls: string;
   stlFileUrl?: string;
   cadFileUrl?: string;
   printTimeHours?: number;
@@ -79,4 +79,14 @@ export interface ProductSearchParams {
   size?: number;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
+}
+
+// Message interface
+export interface Message {
+  id: number;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+  response?: string;
 }

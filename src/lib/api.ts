@@ -9,7 +9,7 @@ import {
   ProductSearchParams
 } from './types';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = 'https://optimus-creations-backend.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -119,10 +119,8 @@ export const fileApi = {
       formData.append('entityType', entityType);
       formData.append('entityId', entityId.toString());
     }
-    return api.post<ResponseDTO<FileMetadata>>(`/upload/${type}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    return api.post<ResponseDTO<FileMetadata>>(`/upload`, {
+      body: formData,
     });
   },
   
