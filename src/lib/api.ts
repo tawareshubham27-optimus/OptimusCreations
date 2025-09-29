@@ -119,7 +119,6 @@ export const fileApi = {
     return fetch('/files/upload', {
           method: 'POST',
           body: formData,
-          headers: { 'Content-Type': 'multipart/form-data' },
         });
   },
   
