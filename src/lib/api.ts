@@ -115,9 +115,11 @@ export const fileApi = {
   uploadFile: (files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
-    return fetch('api/files/upload', {
+    
+    return fetch('/files/upload', {
           method: 'POST',
           body: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
   },
   
