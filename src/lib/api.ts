@@ -116,9 +116,7 @@ export const fileApi = {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     
-    return api.post('/files/upload', {
-          body: formData,
-        });
+    return api.post('/files/upload',  formData);
   },
   
   deleteFile: (fileId: number) =>
