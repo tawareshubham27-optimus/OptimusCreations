@@ -46,27 +46,21 @@ const ContactPage = () => {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
+    const selectedFile = e.target.files;
     if (selectedFile) {
       try {
-        const formData = new FormData();
-        formData.append('files', selectedFile);
-        
-        setIsSubmitting(true);
-        
-        const response = await fetch('/api/files/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        const files = Array.from(selectedFile);
+          
+        const response = await fileApi.uploadFile(files);
 
-        const data = await response.json();
+        const data = response.data.data;
         console.log('File upload response:', data); // Debug log
         
-        if (response.ok && Array.isArray(data) && data.length > 0) {
+        if (response.status === 200 && data && data.length > 0 ) {
           // Handling array response where first item contains the file info
           setUploadedFile({
             id: data[0].id,
-            name: selectedFile.name
+            name: data[0].fileName
           });
           toast({
             title: "Success",

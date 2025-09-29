@@ -280,7 +280,7 @@ export default function CatalogPage() {
                       
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="w-4 h-4" />
-                        <span className="text-sm">~{product.printTimeHours}h print time</span>
+                        <span className="text-sm">~{product.printTimeHours} Days to Deliver</span>
                       </div>
                     </div>
 

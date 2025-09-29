@@ -147,7 +147,6 @@ function ProductForm({
     if (!e.target.files) return;
 
     const files = Array.from(e.target.files);
-    const formData = new FormData();
 
     try {
       const response = await fileApi.uploadFile(files);
