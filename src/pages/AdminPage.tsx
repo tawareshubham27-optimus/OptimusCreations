@@ -153,7 +153,7 @@ function ProductForm({
       const response = await fileApi.uploadFile(files);
 
       if (response.status === 200 ) {
-        const data = await response.data;
+        const data = response.data.data;
 
         // Assuming backend returns [{ id, fileName, s3Url }]
         const uploadedUrls = data.map((f) => f.s3Url);
