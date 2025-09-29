@@ -112,11 +112,8 @@ export const contactApi = {
 
 // File upload API calls
 export const fileApi = {
-  uploadFile: (files: File[]) => {
-    const fileArrays = Array.from(files);
-    const formData = new FormData();
-    fileArrays.forEach((file) => formData.append("files", file));
-    
+  uploadFile: (formData: FormData ) => {
+       
     return api.post(`/files/upload`, {
       body: formData,
     });

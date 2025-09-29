@@ -150,7 +150,7 @@ function ProductForm({
     const formData = new FormData();
 
     try {
-      const response = await fileApi.uploadFile(files);
+      const response = await fileApi.uploadFile(formData);
 
       if (response.status === 200) {
         const data = await response.data;
