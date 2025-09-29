@@ -112,11 +112,13 @@ export const contactApi = {
 
 // File upload API calls
 export const fileApi = {
-  uploadFile: (formData: FormData ) => {
-       
-    return api.post(`/files/upload`, {
-      body: formData,
-    });
+  uploadFile: (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    return fetch('api/files/upload', {
+          method: 'POST',
+          body: formData,
+        });
   },
   
   deleteFile: (fileId: number) =>

@@ -148,12 +148,12 @@ function ProductForm({
 
     const files = Array.from(e.target.files);
     const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    try {
-      const response = await fileApi.uploadFile(formData);
 
-      if (response.status === 200) {
-        const data = await response.data;
+    try {
+      const response = await fileApi.uploadFile(files);
+
+      if (response.ok) {
+        const data = await response.json();
 
         // Assuming backend returns [{ id, fileName, s3Url }]
         const uploadedUrls = data.map((f) => f.s3Url);
