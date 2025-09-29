@@ -112,14 +112,12 @@ export const contactApi = {
 
 // File upload API calls
 export const fileApi = {
-  uploadFile: (file: File, type: 'image' | 'stl' | 'cad', entityType?: 'PRODUCT' | 'CATEGORY', entityId?: number) => {
+  uploadFile: (files: File[]) => {
+    const fileArrays = Array.from(files);
     const formData = new FormData();
-    formData.append('file', file);
-    if (entityType && entityId) {
-      formData.append('entityType', entityType);
-      formData.append('entityId', entityId.toString());
-    }
-    return api.post<ResponseDTO<FileMetadata>>(`/upload`, {
+    fileArrays.forEach((file) => formData.append("files", file));
+    
+    return api.post(`/files/upload`, {
       body: formData,
     });
   },
