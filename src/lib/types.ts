@@ -38,7 +38,7 @@ export interface ProductDTO {
   description: string;
   price: number;
   categoryId: number;
-  imageUrls: string;
+  imageUrls: string[];
   stlFileUrl?: string;
   cadFileUrl?: string;
   printTimeHours?: number;

@@ -43,7 +43,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
-  imageUrl?: string;
+  imageUrls: string[];
   categoryId: number;
   category?: {
     id: number;
@@ -97,7 +97,7 @@ function ProductForm({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price || 0,
-    imageUrl: product?.imageUrl || "",
+    imageUrls: product?.imageUrls || "",
     categoryId: product?.categoryId || (categories[0]?.id || 1),
     featured: product?.featured || false,
     inStock: product?.inStock !== false,
@@ -105,7 +105,7 @@ function ProductForm({
     deliveryTime: product?.deliveryTime || ""
   });
 
-  const [previewUrl, setPreviewUrl] = useState(product?.imageUrl || "");
+  const [previewUrl, setPreviewUrl] = useState(product?.imageUrls || "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -115,14 +115,14 @@ function ProductForm({
         name: product.name,
         description: product.description,
         price: product.price,
-        imageUrl: product.imageUrl || "",
+        imageUrls: product.imageUrls || "",
         categoryId: product.categoryId,
         featured: product.featured,
         inStock: product.inStock,
         rating: product.rating || 5,
         deliveryTime: product.deliveryTime || ""
       });
-      setPreviewUrl(product.imageUrl || "");
+      setPreviewUrl(product.imageUrls || "");
     }
   }, [product]);
 
@@ -144,40 +144,35 @@ function ProductForm({
   }
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-     
+    if (!e.target.files) return;
 
-      try {
-        setIsUploading(true);
-        setUploadError("");
-        
-        const formData = new FormData();
-        formData.append('files', selectedFile);
-        
-        const response = await fetch('/api/files/upload', {
-          method: 'POST',
-          body: formData,
-        });
+    const files = Array.from(e.target.files);
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
 
+    try {
+      const response = await fetch(`/api/files/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
         const data = await response.json();
 
-        if (response.ok && Array.isArray(data) && data.length > 0) {
-          const uploadedUrl = data[0].s3Url || data[0].imageUrl || '';
-          setForm(prev => ({
-            ...prev,
-            imageUrl: uploadedUrl
-          }));
-          setPreviewUrl(uploadedUrl);
-        } else {
-          setUploadError('Could not process upload response');
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        setUploadError(error.message || 'Failed to upload file. Please try again.');
-      } finally {
-        setIsUploading(false);
+        // Assuming backend returns [{ id, fileName, s3Url }]
+        const uploadedUrls = data.map((f) => f.s3Url);
+
+        setForm((prev) => ({
+          ...prev,
+          imageUrls: [...(prev.imageUrls || []), ...uploadedUrls],
+        }));
+
+        setPreviewUrl((prev) => [...prev, ...uploadedUrls]);
+      } else {
+        console.error("Upload failed");
       }
+    } catch (error) {
+      console.error("Error uploading files:", error);
     }
   };
 
@@ -185,13 +180,9 @@ function ProductForm({
     const fileInput = document.getElementById("imageUpload") as HTMLInputElement;
     if (fileInput) fileInput.value = "";
     
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    
     setPreviewUrl("");
     setUploadError("");
-    setForm(prev => ({ ...prev, imageUrl: "" }));
+    setForm(prev => ({ ...prev, imageUrls: [] }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -203,7 +194,7 @@ function ProductForm({
           name: "",
           description: "",
           price: 0,
-          imageUrl: "",
+          imageUrls: [],
           categoryId: categories[0]?.id || 1,
           featured: false,
           inStock: true,
@@ -253,14 +244,14 @@ function ProductForm({
           <label className="text-sm font-medium">Image</label>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="imageUpload" disabled={isUploading || loading} />
+              <Input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" id="imageUpload" disabled={isUploading || loading} />
               <Button type="button" variant="secondary" onClick={() => document.getElementById("imageUpload")?.click()} className="flex-1" disabled={isUploading || loading}>
                 {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin"/>Uploading...</> : <><Upload className="w-4 h-4 mr-2"/>Upload Image</>}
               </Button>
               {previewUrl && <Button type="button" variant="destructive" onClick={removeImage} disabled={isUploading || loading}><Trash className="w-4 h-4"/></Button>}
             </div>
             {uploadError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertDescription>{uploadError}</AlertDescription></Alert>}
-            {previewUrl && <div className="aspect-video bg-muted rounded-lg overflow-hidden"><img src={previewUrl} alt="Preview" className="w-full h-full object-cover"/></div>}
+            {previewUrl && <div className="aspect-video bg-muted rounded-lg overflow-hidden"><img src={previewUrl[0]} alt="Preview" className="w-full h-full object-cover"/></div>}
           </div>
         </div>
         <div className="md:col-span-2">
@@ -439,7 +430,7 @@ export default function AdminPage() {
                   <CardTitle>{product.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {product.imageUrl && <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover rounded-lg mb-2" />}
+                  {product.imageUrls && product.imageUrls.length > 0 && <img src={product.imageUrls[0]} alt={product.name} className="w-full h-40 object-cover rounded-lg mb-2" />}
                   <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
                   <p className="text-sm font-medium">Price: ₹{product.price.toFixed(2)}</p>
                   <p className="text-sm font-medium">Category: {product.category?.name || "N/A"}</p>
