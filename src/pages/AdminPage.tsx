@@ -214,7 +214,7 @@ function ProductForm({
         </div>
         <div>
           <label className="text-sm font-medium">Category *</label>
-          <Select value={form.categoryId.toString()} onValueChange={handleCategoryChange} disabled={loading}>
+          <Select value={form.categoryId?.toString() || "1"} onValueChange={handleCategoryChange} disabled={loading}>
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -225,7 +225,7 @@ function ProductForm({
         </div>
         <div>
           <label className="text-sm font-medium">Price *</label>
-          <Input name="price" type="number" step="0.01" min="0" value={form.price} onChange={handleChange} required disabled={loading} />
+          <Input name="price" type="number" step="10" min="10" value={form.price} onChange={handleChange} required disabled={loading} />
         </div>
         <div>
           <label className="text-sm font-medium">Rating</label>
@@ -332,7 +332,6 @@ export default function AdminPage() {
       const response = await productApi.updateProduct(editingProduct.id, productData);
       if (response.data.status === 'success') {
         setSuccess("Product updated successfully!");
-        setEditingProduct(null);
         await loadProducts();
         setTimeout(() => setSuccess(""), 3000);
       }

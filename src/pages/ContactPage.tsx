@@ -60,7 +60,7 @@ const ContactPage = () => {
           // Handling array response where first item contains the file info
           setUploadedFile({
             id: data[0].id,
-            name: data[0].fileName
+            name: data[0].filename
           });
           toast({
             title: "Success",
